@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Prompt → GRAB Level</title>
+<style>
+:root{
+  --bg:#070b12;--s1:#0d1220;--s2:#111827;--b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+  --t:#e8edf5;--m:rgba(180,196,220,.55);
+  --a:#3efcbe;--a2:#a87bff;--a3:#ffc060;--err:#ff4d6a;--ok:#3efcbe;
+  --mono:'Courier New',Courier,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --rad:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(62,252,190,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(62,252,190,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+
+header{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  padding:20px 28px 18px;
+  border-bottom:1px solid var(--b);
+  background:rgba(7,11,18,.85);
+  backdrop-filter:blur(8px);
+}
+.hdr-logo{display:flex;flex-direction:column;gap:4px}
+.hdr-logo h1{
+  font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.01em;
+  background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hdr-logo h1 .arrow{-webkit-text-fill-color:rgba(255,255,255,.25)}
+.hdr-logo p{font-size:12px;color:var(--m);font-family:var(--mono)}
+.hdr-badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{
+  padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;
+  font-family:var(--mono);letter-spacing:.06em;border:1px solid;
+}
+.badge-green{border-color:rgba(62,252,190,.3);background:rgba(62,252,190,.07);color:var(--a)}
+.badge-purple{border-color:rgba(168,123,255,.3);background:rgba(168,123,255,.07);color:var(--a2)}
+.badge-gold{border-color:rgba(255,192,96,.3);background:rgba(255,192,96,.07);color:var(--a3)}
+
+main{
+  position:relative;z-index:1;flex:1;
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  min-height:0;
+}
+@media(max-width:860px){main{grid-template-columns:1fr;}}
+
+.panel{
+  padding:22px 24px;
+  display:flex;flex-direction:column;gap:14px;
+  overflow-y:auto;
+}
+.panel-left{border-right:1px solid var(--b)}
+.panel-right{background:rgba(0,0,0,.18)}
+
+.sec-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--m);font-weight:600;
+}
+
+.prompt-wrap{position:relative}
+.prompt-textarea{
+  width:100%;min-height:160px;resize:vertical;
+  background:var(--s1);border:1px solid var(--b);border-radius:var(--rad);
+  padding:14px 16px;font-size:13px;font-family:var(--sans);color:var(--t);
+  line-height:1.65;outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.prompt-textarea::placeholder{color:var(--m)}
+.prompt-textarea:focus{border-color:rgba(62,252,190,.35);box-shadow:0 0 0 3px rgba(62,252,190,.07)}
+.char-count{
+  position:absolute;bottom:10px;right:12px;
+  font-family:var(--mono);font-size:10px;color:var(--m);pointer-events:none;
+}
+.char-count.warn{color:var(--a3)}
+
+.suggestions{display:flex;flex-wrap:wrap;gap:6px}
+.suggest-pill{
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;
+  border:1px solid var(--b);background:rgba(255,255,255,.03);
+  color:var(--m);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.suggest-pill:hover{border-color:var(--a);color:var(--a);background:rgba(62,252,190,.06)}
+
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt-field label{display:block;font-size:11px;font-weight:600;color:var(--m);margin-bottom:5px;font-family:var(--mono);letter-spacing:.04em}
+.opt-select{
+  width:100%;background:var(--s2);border:1px solid var(--b);border-radius:9px;
+  padding:9px 12px;font-size:12px;color:var(--t);outline:none;cursor:pointer;
+  transition:border-color .15s;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(180,196,220,.4)'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;
+}
+.opt-select:focus{border-color:rgba(62,252,190,.35)}
+
+.filter-warning{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:12px 14px;border-radius:10px;
+  background:rgba(255,77,106,.07);border:1px solid rgba(255,77,106,.25);
+  font-size:12px;color:var(--err);line-height:1.6;
+}
+.filter-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+
+.generate-btn{
+  width:100%;padding:15px;border-radius:var(--rad);border:none;cursor:pointer;
+  font-size:15px;font-weight:700;font-family:var(--mono);letter-spacing:.04em;
+  background:linear-gradient(135deg,rgba(62,252,190,.15),rgba(168,123,255,.15));
+  border:1px solid rgba(62,252,190,.3);color:var(--a);
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.generate-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(62,252,190,.1),rgba(168,123,255,.1));
+  opacity:0;transition:opacity .2s;
+}
+.generate-btn:hover::before{opacity:1}
+.generate-btn:hover{border-color:rgba(62,252,190,.5);box-shadow:0 0 24px rgba(62,252,190,.15)}
+.generate-btn:active{transform:scale(.99)}
+.generate-btn:disabled{opacity:.45;cursor:not-allowed}
+.generate-btn.loading{animation:pulse-border 1.2s ease infinite}
+@keyframes pulse-border{0%,100%{box-shadow:0 0 12px rgba(62,252,190,.15)}50%{box-shadow:0 0 28px rgba(62,252,190,.3)}}
+
+.tips-box{
+  padding:11px 14px;border-radius:9px;
+  background:rgba(168,123,255,.05);border:1px solid rgba(168,123,255,.15);
+  font-size:11px;color:var(--m);line-height:1.75;
+}
+.tips-box b{color:var(--a2)}
+
+.empty-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;text-align:center;padding:40px 20px;color:var(--m);
+}
+.empty-glyph{
+  font-size:52px;line-height:1;
+  background:linear-gradient(135deg,var(--a),var(--a2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.empty-title{font-size:15px;font-weight:700;color:rgba(232,237,245,.6)}
+.empty-sub{font-size:12px;line-height:1.7;max-width:28ch}
+
+.loading-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;padding:40px;
+}
+.loader-ring{
+  width:52px;height:52px;border-radius:50%;
+  border:3px solid rgba(62,252,190,.1);
+  border-top-color:var(--a);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-steps{display:flex;flex-direction:column;gap:7px;width:100%;max-width:280px}
+.loader-step{
+  display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--m);
+  padding:6px 10px;border-radius:7px;border:1px solid var(--b);transition:all .3s;
+}
+.loader-step.active{color:var(--a);border-color:rgba(62,252,190,.25);background:rgba(62,252,190,.04)}
+.loader-step.done{color:rgba(62,252,190,.5);border-color:transparent}
+.step-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.loader-step.active .step-dot{animation:blink .6s ease infinite alternate}
+@keyframes blink{from{opacity:.3}to{opacity:1}}
+
+.result-state{display:flex;flex-direction:column;gap:14px;height:100%}
+
+.level-info-header{
+  display:flex;flex-direction:column;gap:6px;
+  padding:14px 16px;border-radius:var(--rad);
+  background:linear-gradient(135deg,rgba(62,252,190,.06),rgba(168,123,255,.06));
+  border:1px solid rgba(62,252,190,.15);
+}
+.level-info-title{font-size:16px;font-weight:700;color:var(--t)}
+.level-info-desc{font-size:12px;color:var(--m);line-height:1.6}
+.info-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:7px;margin-top:6px}
+.info-card{background:rgba(0,0,0,.25);border:1px solid var(--b);border-radius:9px;padding:9px 11px;text-align:center}
+.info-card .icv{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--a);line-height:1;margin-bottom:2px}
+.info-card .icl{font-size:10px;color:var(--m);letter-spacing:.03em}
+
+.action-row{display:flex;gap:7px;flex-wrap:wrap}
+.action-btn{
+  flex:1;min-width:80px;padding:9px 12px;border-radius:9px;border:none;cursor:pointer;
+  font-size:12px;font-weight:700;font-family:var(--mono);transition:all .15s;
+}
+.action-btn-primary{
+  background:rgba(62,252,190,.12);border:1px solid rgba(62,252,190,.3);color:var(--a);
+}
+.action-btn-primary:hover{background:rgba(62,252,190,.2);border-color:rgba(62,252,190,.5)}
+.action-btn-level{
+  background:rgba(62,252,190,.7);border:1px solid var(--a);color:#050f0a;
+}
+.action-btn-level:hover{background:var(--a)}
+.action-btn-sec{
+  background:rgba(255,255,255,.04);border:1px solid var(--b);color:var(--m);
+}
+.action-btn-sec:hover{color:var(--t);border-color:var(--b2)}
+.action-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.json-viewer{
+  flex:1;background:var(--s1);border:1px solid var(--b);border-radius:var(--rad);
+  padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.75;
+  overflow-y:auto;max-height:380px;white-space:pre;color:rgba(232,237,245,.7);
+  tab-size:2;
+}
+.json-key{color:var(--a2)}
+.json-string{color:var(--a3)}
+.json-num{color:#61d9ff}
+.json-bool{color:var(--err)}
+.json-null{color:var(--m)}
+
+.error-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:32px;text-align:center;
+}
+.error-icon{font-size:40px}
+.error-msg{
+  padding:14px 18px;border-radius:var(--rad);
+  background:rgba(255,77,106,.07);border:1px solid rgba(255,77,106,.2);
+  font-size:12px;color:var(--err);line-height:1.7;font-family:var(--mono);max-width:400px;
+}
+.retry-btn{
+  padding:9px 20px;border-radius:9px;font-size:12px;font-weight:700;font-family:var(--mono);
+  background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.25);color:var(--err);
+  cursor:pointer;transition:all .15s;
+}
+.retry-btn:hover{background:rgba(255,77,106,.18)}
+
+footer{
+  position:relative;z-index:1;
+  padding:12px 28px;border-top:1px solid var(--b);
+  font-family:var(--mono);font-size:10px;color:var(--m);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+}
+footer a{color:var(--a);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+[title]{cursor:help}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-logo">
+    <h1>PROMPT<span class="arrow"> → </span>GRAB</h1>
+    <p>Describe a level in plain English · AI builds it for GRAB VR</p>
+  </div>
+  <div class="hdr-badges">
+    <span class="badge badge-green">Format v17</span>
+    <span class="badge badge-purple">Claude AI</span>
+    <span class="badge badge-gold">GRAB VR</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="panel panel-left">
+    <div class="sec-label">describe your level</div>
+
+    <div class="prompt-wrap">
+      <textarea
+        class="prompt-textarea"
+        id="promptInput"
+        placeholder="A mysterious underwater temple with glowing blue coral pillars, narrow ledges over dark water, and ancient stone platforms leading up to a sunken treasure room..."
+        maxlength="800"
+        rows="7"
+      ></textarea>
+      <span class="char-count" id="charCount">0 / 800</span>
+    </div>
+
+    <div>
+      <div class="sec-label" style="margin-bottom:7px">quick starts</div>
+      <div class="suggestions" id="suggestions">
+        <button class="suggest-pill">🏰 Medieval castle towers</button>
+        <button class="suggest-pill">🌋 Escape an erupting volcano</button>
+        <button class="suggest-pill">🌌 Abandoned space station</button>
+        <button class="suggest-pill">🏔 Snowy mountain summit climb</button>
+        <button class="suggest-pill">🌊 Underwater temple ruins</button>
+        <button class="suggest-pill">⚡ Neon cyberpunk rooftops</button>
+        <button class="suggest-pill">🌿 Ancient jungle overgrown ruins</button>
+        <button class="suggest-pill">🎭 Floating sky islands at sunset</button>
+        <button class="suggest-pill">🔥 Lava cave with obsidian bridges</button>
+        <button class="suggest-pill">🏛 Greek marble colosseum</button>
+        <button class="suggest-pill">🧊 Ice palace frozen in time</button>
+        <button class="suggest-pill">🎪 Carnival suspended in the clouds</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label" style="margin-bottom:9px">level options</div>
+      <div class="options-grid">
+        <div class="opt-field">
+          <label>Sky Theme</label>
+          <select class="opt-select" id="skyTheme">
+            <option value="auto">✨ Auto (AI decides)</option>
+            <option value="day">☀️ Day</option>
+            <option value="night">🌙 Night</option>
+            <option value="dawn">🌄 Dawn</option>
+            <option value="sunset">🌇 Sunset</option>
+            <option value="neon">⚡ Neon</option>
+            <option value="void">🌌 Void / Space</option>
+            <option value="lava">🌋 Lava / Volcanic</option>
+          </select>
+        </div>
+        <div class="opt-field">
+          <label>Difficulty</label>
+          <select class="opt-select" id="difficulty">
+            <option value="easy">🟢 Easy — wide platforms</option>
+            <option value="medium" selected>🟡 Medium — balanced</option>
+            <option value="hard">🔴 Hard — narrow ledges</option>
+            <option value="extreme">💀 Extreme — ruthless</option>
+          </select>
+        </div>
+        <div class="opt-field">
+          <label>Level Style</label>
+          <select class="opt-select" id="levelType">
+            <option value="platformer" selected>🪜 Platformer</option>
+            <option value="climbing">🧗 Climbing</option>
+            <option value="speedrun">🏃 Speedrun</option>
+            <option value="exploration">🗺 Exploration</option>
+            <option value="parkour">🤸 Parkour</option>
+          </select>
+        </div>
+        <div class="opt-field">
+          <label>Level Size</label>
+          <select class="opt-select" id="levelSize">
+            <option value="small">📦 Small (15–25 platforms)</option>
+            <option value="medium" selected>🏗 Medium (25–45 platforms)</option>
+            <option value="large">🏙 Large (45–65 platforms)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-warning" id="filterWarning" style="display:none">
+      <span class="filter-icon">🚫</span>
+      <span id="filterMsg"></span>
+    </div>
+
+    <button class="generate-btn" id="generateBtn">
+      ⚡&nbsp;&nbsp;Generate Level
+    </button>
+
+    <div class="tips-box">
+      <b>Tips for better levels:</b> Be specific about the <b>atmosphere</b> (dark/bright/foggy), <b>setting</b> (indoors/outdoors/floating), and any <b>special elements</b> (crystals, fire, water). The AI adds platforms, signs, collectibles and sky colors to match your description.
+    </div>
+  </div>
+
+  <div class="panel panel-right" id="outputPanel">
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-glyph">◈</div>
+      <div class="empty-title">Your level will appear here</div>
+      <div class="empty-sub">Write a description on the left and press Generate. The AI will build a complete GRAB VR level JSON ready to download.</div>
+    </div>
+
+    <div class="loading-state" id="loadingState" style="display:none">
+      <div class="loader-ring"></div>
+      <div class="loader-steps" id="loaderSteps">
+        <div class="loader-step" id="step1"><span class="step-dot"></span>Reading your description…</div>
+        <div class="loader-step" id="step2"><span class="step-dot"></span>Planning level layout…</div>
+        <div class="loader-step" id="step3"><span class="step-dot"></span>Placing platforms &amp; obstacles…</div>
+        <div class="loader-step" id="step4"><span class="step-dot"></span>Adding signs, gems &amp; atmosphere…</div>
+        <div class="loader-step" id="step5"><span class="step-dot"></span>Finalising JSON…</div>
+      </div>
+    </div>
+
+    <div class="result-state" id="resultState" style="display:none">
+      <div class="sec-label">generated level</div>
+
+      <div class="level-info-header" id="levelInfoHeader">
+        <div class="level-info-title" id="levelTitle">—</div>
+        <div class="level-info-desc" id="levelDesc">—</div>
+        <div class="info-cards" id="infoCards"></div>
+      </div>
+
+      <div class="action-row">
+        <button class="action-btn action-btn-primary" id="dlJsonBtn">⬇ .json</button>
+        <button class="action-btn action-btn-level" id="dlLevelBtn">⬇ .level</button>
+        <button class="action-btn action-btn-sec" id="copyBtn">⎘ Copy</button>
+        <button class="action-btn action-btn-sec" id="regenBtn">↺ Regenerate</button>
+      </div>
+
+      <div class="sec-label">level json preview</div>
+      <div class="json-viewer" id="jsonViewer"></div>
+    </div>
+
+    <div class="error-state" id="errorState" style="display:none">
+      <div class="error-icon">⚠</div>
+      <div class="error-msg" id="errorMsg"></div>
+      <button class="retry-btn" id="retryBtn">Try Again</button>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <span>Prompt → GRAB · AI Level Generator · GRAB VR format v17</span>
+  <span>
+    <a href="https://grab-tools.live/editor" target="_blank">grab-tools.live</a> ·
+    <a href="https://grabvr.quest/levels" target="_blank">Level Browser</a> ·
+    <a href="https://wiki.grab-tools.live" target="_blank">GRAB Wiki</a>
+  </span>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  ⚠️ PASTE YOUR (ROTATED) ANTHROPIC API KEY BELOW ⚠️
+//  This key will be visible to anyone who views this page's
+//  source or opens dev tools. Only use this if the page is
+//  never deployed anywhere public.
+// ═══════════════════════════════════════════════════════════
+const ANTHROPIC_API_KEY = "PASTE_YOUR_ROTATED_KEY_HERE";
+
+// ═══════════════════════════════════════════════════════════
+//  PROFANITY / SLUR FILTER
+// ═══════════════════════════════════════════════════════════
+const BANNED = [
+  'fuck','fucking','fucked','fucker','shit','shitting','cunt','cunts',
+  'cock','dicks','asshole','assholes','bastard','motherfucker','motherfucking',
+  'bullshit','bullshitting','dipshit',
+  'nigger','nigga','niggas','niggers','chink','chinks','spic','spics',
+  'kike','kikes','wetback','wetbacks','gook','gooks','towelhead','towelheads',
+  'raghead','ragheads','beaner','beaners','cracker','crackers','redneck',
+  'jap','japs','nip','nips','slope','slopes','coon','coons','porch','sambo',
+  'darkie','darkies','zipperhead','polack','polacks','kraut','krauts',
+  'faggot','faggots','fag','fags','dyke','dykes','tranny','trannies',
+  'shemale','shemales','homo','homos','queer','queers','poofter','poofters',
+  'whore','whores','slut','sluts','bitch','bitches','thot','thots','skank',
+  'retard','retards','retarded','spaz','spastic',
+  'yid','yids','heeb','heebs','hymie','hymies',
+  'nazi','nazis','heil','genocide','terrorism','terrorist',
+  'penis','vagina','clitoris','blowjob','handjob','cumshot','jizz',
+  'creampie','bdsm','bondage','dildo','vibrator','masturbate','masturbating',
+  'pornography','pornographic','porno'
+];
+
+function containsBannedWord(text){
+  const lower = text.toLowerCase();
+  return BANNED.some(w => new RegExp(`\\b${w}\\b`, 'i').test(lower));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI ELEMENTS
+// ═══════════════════════════════════════════════════════════
+const promptInput   = document.getElementById('promptInput');
+const charCount      = document.getElementById('charCount');
+const generateBtn    = document.getElementById('generateBtn');
+const filterWarning  = document.getElementById('filterWarning');
+const filterMsg      = document.getElementById('filterMsg');
+
+const emptyState   = document.getElementById('emptyState');
+const loadingState = document.getElementById('loadingState');
+const resultState  = document.getElementById('resultState');
+const errorState   = document.getElementById('errorState');
+
+const levelTitle = document.getElementById('levelTitle');
+const levelDesc  = document.getElementById('levelDesc');
+const infoCards  = document.getElementById('infoCards');
+const jsonViewer = document.getElementById('jsonViewer');
+const errorMsg   = document.getElementById('errorMsg');
+
+let lastLevelJson = null;
+let lastPrompt = "";
+
+// Character counter
+promptInput.addEventListener('input', () => {
+  const len = promptInput.value.length;
+  charCount.textContent = `${len} / 800`;
+  charCount.classList.toggle('warn', len > 700);
+});
+
+// Suggestion pills fill the textarea
+document.querySelectorAll('.suggest-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const text = pill.textContent.replace(/^\S+\s/, ''); // strip leading emoji
+    promptInput.value = text;
+    promptInput.dispatchEvent(new Event('input'));
+    promptInput.focus();
+  });
+});
+
+function showPanel(name){
+  emptyState.style.display   = name === 'empty'   ? 'flex' : 'none';
+  loadingState.style.display = name === 'loading' ? 'flex' : 'none';
+  resultState.style.display  = name === 'result'  ? 'flex' : 'none';
+  errorState.style.display   = name === 'error'   ? 'flex' : 'none';
+}
+
+function animateLoaderSteps(){
+  const steps = ['step1','step2','step3','step4','step5'];
+  let i = 0;
+  document.getElementById(steps[0]).classList.add('active');
+  const interval = setInterval(() => {
+    document.getElementById(steps[i]).classList.remove('active');
+    document.getElementById(steps[i]).classList.add('done');
+    i++;
+    if (i < steps.length){
+      document.getElementById(steps[i]).classList.add('active');
+    } else {
+      clearInterval(interval);
+    }
+  }, 900);
+  return () => {
+    clearInterval(interval);
+    steps.forEach(s => {
+      document.getElementById(s).classList.remove('active','done');
+    });
+  };
+}
+
+function syntaxHighlight(json){
+  const str = JSON.stringify(json, null, 2);
+  return str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
+    match => {
+      let cls = 'json-num';
+      if (/^"/.test(match)){
+        cls = /:$/.test(match) ? 'json-key' : 'json-string';
+      } else if (/true|false/.test(match)){
+        cls = 'json-bool';
+      } else if (/null/.test(match)){
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    });
+}
+
+function renderInfoCards(json){
+  infoCards.innerHTML = '';
+  const platformCount = Array.isArray(json.platforms) ? json.platforms.length : (json.platformCount ?? '—');
+  const cards = [
+    { v: platformCount, l: 'platforms' },
+    { v: json.sky || json.skyTheme || '—', l: 'sky' },
+    { v: json.difficulty || '—', l: 'difficulty' },
+    { v: json.type || json.levelType || '—', l: 'type' }
+  ];
+  cards.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'info-card';
+    div.innerHTML = `<div class="icv">${c.v}</div><div class="icl">${c.l}</div>`;
+    infoCards.appendChild(div);
+  });
+}
+
+async function generateLevel(){
+  const prompt = promptInput.value.trim();
+  filterWarning.style.display = 'none';
+
+  if (!prompt){
+    filterMsg.textContent = 'Please describe a level before generating.';
+    filterWarning.style.display = 'flex';
+    return;
+  }
+
+  if (containsBannedWord(prompt)){
+    filterMsg.textContent = 'Your description contains language that isn\u2019t allowed. Please rephrase and try again.';
+    filterWarning.style.display = 'flex';
+    return;
+  }
+
+  if (ANTHROPIC_API_KEY === "PASTE_YOUR_ROTATED_KEY_HERE" || !ANTHROPIC_API_KEY){
+    errorMsg.textContent = 'No API key set. Open this file and paste your Anthropic API key into the ANTHROPIC_API_KEY constant near the top of the <script> block.';
+    showPanel('error');
+    return;
+  }
+
+  const options = {
+    skyTheme: document.getElementById('skyTheme').value,
+    difficulty: document.getElementById('difficulty').value,
+    levelType: document.getElementById('levelType').value,
+    levelSize: document.getElementById('levelSize').value
+  };
+
+  lastPrompt = prompt;
+  generateBtn.disabled = true;
+  generateBtn.classList.add('loading');
+  showPanel('loading');
+  const cancelAnim = animateLoaderSteps();
+
+  try {
+    const systemPrompt = `You generate level JSON for a VR platforming game called GRAB, format v17. Respond with ONLY valid raw JSON — no markdown code fences, no commentary, no explanation before or after. The JSON should include: a "name" (short title), a "description" (1-2 sentences), "sky" (string), "difficulty" (string), "type" (string), and a "platforms" array of platform objects (each with position {x,y,z}, size, and a material/theme string appropriate to the setting). Include a reasonable number of platforms based on the requested size. Also include "signs" and "gems" arrays if appropriate to the theme.`;
+
+    const userPrompt = `Level description: "${prompt}"
+Sky theme preference: ${options.skyTheme}
+Difficulty: ${options.difficulty}
+Level style: ${options.levelType}
+Level size: ${options.levelSize}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }]
+      })
+    });
+
+    if (!response.ok){
+      const errBody = await response.text();
+      throw new Error(`API error ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const text = (data.content || []).map(b => b.text || "").join("");
+    const cleaned = text.replace(/```json|```/g, "").trim();
+
+    let levelJson;
+    try {
+      levelJson = JSON.parse(cleaned);
+    } catch (parseErr){
+      throw new Error("The AI response wasn't valid JSON. Try regenerating.");
+    }
+
+    lastLevelJson = levelJson;
+    cancelAnim();
+
+    levelTitle.textContent = levelJson.name || prompt.slice(0, 48);
+    levelDesc.textContent  = levelJson.description || prompt;
+    renderInfoCards(levelJson);
+    jsonViewer.innerHTML = syntaxHighlight(levelJson);
+
+    showPanel('result');
+
+  } catch (err){
+    cancelAnim();
+    errorMsg.textContent = err.message || 'Something went wrong generating the level.';
+    showPanel('error');
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.classList.remove('loading');
+  }
+}
+
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('generateBtn').addEventListener('click', generateLevel);
+document.getElementById('retryBtn').addEventListener('click', generateLevel);
+document.getElementById('regenBtn').addEventListener('click', generateLevel);
+
+document.getElementById('dlJsonBtn').addEventListener('click', () => {
+  if (!lastLevelJson) return;
+  const name = (lastLevelJson.name || 'level').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+  downloadFile(`${name}.json`, JSON.stringify(lastLevelJson, null, 2), 'application/json');
+});
+
+document.getElementById('dlLevelBtn').addEventListener('click', () => {
+  if (!lastLevelJson) return;
+  const name = (lastLevelJson.name || 'level').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+  downloadFile(`${name}.level`, JSON.stringify(lastLevelJson, null, 2), 'application/octet-stream');
+});
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  if (!lastLevelJson) return;
+  await navigator.clipboard.writeText(JSON.stringify(lastLevelJson, null, 2));
+  const btn = document.getElementById('copyBtn');
+  const original = btn.textContent;
+  btn.textContent = '✓ Copied';
+  setTimeout(() => { btn.textContent = original; }, 1500);
+});
+</script>
+</body>
+</html>
